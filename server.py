@@ -29,6 +29,7 @@ TERMINOLOGY_PATH = CONFIG_DIR / "terminology.json"
 DEFAULT_BOM_DIR = r"D:\10.Project\BOM"
 DEFAULT_ADMIN_USER = "duynk90"
 DEFAULT_ADMIN_PASSWORD = "08011994"
+HIDDEN_MODEL_NAMES = {"tonghopbom", "tonghopbomcapnhat"}
 
 index_lock = threading.Lock()
 index_state = {"running": False, "message": "Idle", "indexed": 0, "total": 0, "errors": []}
@@ -572,15 +573,19 @@ def aggregate_duplicate_parts(rows):
 
 def api_models(query, limit=80):
     nq = normalize_text(query)
+    if not nq:
+        return []
     with db() as conn:
         rows = conn.execute("SELECT id,path,name,model,row_count,indexed_at FROM files ORDER BY name").fetchall()
     scored = []
     for row in rows:
+        if normalize_text(row["model"]) in HIDDEN_MODEL_NAMES:
+            continue
         hay = normalize_text(row["model"] + " " + row["name"])
-        if not nq or nq in hay:
+        if nq in hay:
             score = 100 if normalize_text(row["model"]) == nq else 90 if hay.startswith(nq) else 75
         else:
-            score = SequenceMatcher(None, nq, hay).ratio() * 70 if nq else 50
+            score = SequenceMatcher(None, nq, hay).ratio() * 70
         if score >= 30:
             scored.append((score, row))
     scored.sort(key=lambda item: (-item[0], item[1]["name"]))

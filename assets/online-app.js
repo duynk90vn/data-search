@@ -10,6 +10,7 @@ const state = {
 
 const ADMIN_USER = "duynk90";
 const ADMIN_PASSWORD_HASH = "7e77334c65db47e4bacd8e2f6b3c0051c3963ed8b0bbf9982e310cb32baf2d32";
+const HIDDEN_MODEL_NAMES = new Set(["tonghopbom", "tonghopbomcapnhat"]);
 const $ = (id) => document.getElementById(id);
 
 function escapeHtml(value) {
@@ -37,6 +38,10 @@ function normalizedWords(value) {
     .replace(/[^\w\u4e00-\u9fff]+/gu, " ")
     .split(/\s+/)
     .filter(Boolean);
+}
+
+function isHiddenModel(file) {
+  return HIDDEN_MODEL_NAMES.has(normalizeText(file.model));
 }
 
 function phraseContains(container, phrase) {
@@ -122,10 +127,12 @@ function aggregate(rows) {
 
 function searchModels(query, limit = 20) {
   const q = normalizeText(query);
+  if (!q) return [];
   return state.files
+    .filter((file) => !isHiddenModel(file))
     .map((file) => {
       const hay = normalizeText(`${file.model} ${file.name}`);
-      const score = !q ? 50 : hay.includes(q) ? 100 : 0;
+      const score = hay.includes(q) ? 100 : 0;
       return { ...file, score };
     })
     .filter((file) => file.score > 0)
@@ -330,7 +337,6 @@ async function boot() {
   $("dataRows").textContent = state.rows.length;
   $("dataTerms").textContent = Object.keys(state.terms).length;
   renderTerms();
-  renderModelChips($("modelInput"), $("modelSuggestions"), pickModel);
 }
 
 boot().catch((error) => {

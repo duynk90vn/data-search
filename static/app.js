@@ -111,6 +111,10 @@ async function loadSettings() {
 
 async function searchModels(input, target, onPick) {
   const q = input.value.trim();
+  if (!q) {
+    target.innerHTML = "";
+    return;
+  }
   const models = await api(`/api/models?q=${encodeURIComponent(q)}`);
   target.innerHTML = models
     .slice(0, 60)
@@ -379,7 +383,6 @@ function bind() {
 async function boot() {
   bind();
   await Promise.all([loadSettings(), loadTerms(), loadStatus()]);
-  await searchModels($("modelSearch"), $("modelResults"), pickModel);
   setInterval(loadStatus, 1500);
 }
 
