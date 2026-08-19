@@ -4,9 +4,11 @@ Tool web chạy local trên Windows để index và tra cứu BOM Excel tiếng 
 
 ## Chạy
 
-Mở file `start.bat`, sau đó vào:
+Mở file `start.bat`. Trình duyệt sẽ tự mở:
 
 `http://127.0.0.1:8765`
+
+Không mở trực tiếp `static/index.html` bằng double-click, vì giao diện cần backend local để đọc database SQLite và file BOM.
 
 Folder BOM mặc định:
 

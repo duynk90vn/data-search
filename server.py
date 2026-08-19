@@ -10,6 +10,7 @@ import time
 import unicodedata
 import urllib.parse
 import hashlib
+import webbrowser
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from difflib import SequenceMatcher
@@ -748,8 +749,11 @@ def main():
     start_index(False)
     port = int(os.environ.get("BOM_TOOL_PORT", "8765"))
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"BOM lookup is running at http://127.0.0.1:{port}")
+    url = f"http://127.0.0.1:{port}"
+    print(f"BOM lookup is running at {url}")
     print("Close this window or press Ctrl+C to stop.")
+    if os.environ.get("BOM_TOOL_NO_BROWSER") != "1":
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
