@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BOM Lookup</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">BO</div>
+          <div>
+            <h1>BOM Lookup</h1>
+            <p>Local Windows tool</p>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Main sections">
+          <button class="tab active" data-tab="search">Tra cứu</button>
+          <button class="tab" data-tab="compare">So sánh BOM</button>
+          <button class="tab" data-tab="terminology">Từ điển</button>
+          <button class="tab" data-tab="database">Dữ liệu</button>
+          <button class="tab" data-tab="settings">Cài đặt</button>
+        </nav>
+        <div class="status-card">
+          <span id="statusDot" class="dot"></span>
+          <div>
+            <strong id="statusText">Checking index...</strong>
+            <small id="statusMeta">0 file, 0 dòng</small>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section id="search" class="panel active">
+          <div class="section-head">
+            <div>
+              <h2>Tra cứu</h2>
+              <p>Chọn đúng model trước, rồi tìm linh kiện bằng tiếng Việt hoặc tiếng Trung.</p>
+            </div>
+            <button id="refreshBtn" class="button secondary">Cập nhật BOM</button>
+          </div>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="modelSearch">Model / BOM</label>
+              <input id="modelSearch" type="search" placeholder="Ví dụ: 319, NC319, NC-319" autocomplete="off" />
+              <div id="modelResults" class="suggestions"></div>
+            </div>
+            <div class="selected-box">
+              <span>BOM đã chọn</span>
+              <strong id="selectedModel">Chưa chọn</strong>
+              <small id="selectedFile">Hãy click một BOM trong danh sách gợi ý.</small>
+            </div>
+          </div>
+
+          <div class="query-row">
+            <div class="field grow">
+              <label for="partSearch">Linh kiện</label>
+              <input id="partSearch" type="search" placeholder="Ví dụ: vít giá treo, tụ điện, chụp treo, cánh quạt" />
+            </div>
+            <button id="searchBtn" class="button primary">Tìm kiếm</button>
+          </div>
+
+          <div id="termHint" class="hint"></div>
+          <div id="resultSummary" class="summary"></div>
+          <div id="results" class="table-shell"></div>
+        </section>
+
+        <section id="compare" class="panel">
+          <div class="section-head">
+            <div>
+              <h2>So sánh BOM</h2>
+              <p>Chọn nhiều BOM, nhập linh kiện, rồi so sánh các dòng liên quan.</p>
+            </div>
+          </div>
+          <div class="compare-layout">
+            <div class="field">
+              <label for="compareModelSearch">Thêm BOM</label>
+              <input id="compareModelSearch" type="search" placeholder="Tìm model để thêm vào so sánh" />
+              <div id="compareModelResults" class="suggestions compact"></div>
+            </div>
+            <div>
+              <label>Danh sách so sánh</label>
+              <div id="compareSelected" class="chips"></div>
+            </div>
+          </div>
+          <div class="query-row">
+            <div class="field grow">
+              <label for="compareQuery">Linh kiện</label>
+              <input id="compareQuery" type="search" placeholder="Ví dụ: giá treo, công tắc, motor" />
+            </div>
+            <button id="compareBtn" class="button primary">So sánh</button>
+          </div>
+          <div id="compareSummary" class="summary"></div>
+          <div id="compareResults" class="table-shell"></div>
+        </section>
+
+        <section id="terminology" class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Từ điển</h2>
+              <p>Quản lý mapping tiếng Việt sang tiếng Trung dùng khi tìm kiếm.</p>
+            </div>
+            <button id="saveTermsBtn" class="button primary">Lưu</button>
+          </div>
+          <div class="term-editor">
+            <div class="field">
+              <label for="termVi">Tiếng Việt</label>
+              <input id="termVi" placeholder="Ví dụ: vít giá treo" />
+            </div>
+            <div class="field">
+              <label for="termZh">Tiếng Trung liên quan</label>
+              <input id="termZh" placeholder="Ví dụ: 吊架螺丝, 吊架螺釘" />
+            </div>
+            <div class="term-actions">
+              <button id="addTermBtn" class="button secondary">Thêm / Cập nhật</button>
+              <button id="cancelEditBtn" class="button ghost" hidden>Hủy</button>
+            </div>
+          </div>
+          <div id="termsList" class="terms-list"></div>
+        </section>
+
+        <section id="database" class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Dữ liệu</h2>
+              <p>Theo dõi index SQLite và cập nhật lại dữ liệu BOM.</p>
+            </div>
+            <button id="reindexBtn" class="button danger">Đọc lại toàn bộ BOM</button>
+          </div>
+          <div class="metrics">
+            <div><span>Số file</span><strong id="metricFiles">0</strong></div>
+            <div><span>Số dòng</span><strong id="metricRows">0</strong></div>
+            <div><span>Tiến độ đọc dữ liệu</span><strong id="metricProgress">Đang chờ</strong></div>
+          </div>
+          <div id="indexErrors" class="errors"></div>
+        </section>
+
+        <section id="settings" class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Cài đặt</h2>
+              <p>Đổi folder BOM trên máy tính. Tool sẽ tự nhận diện file thêm, sửa, xóa.</p>
+            </div>
+            <button id="saveSettingsBtn" class="button primary">Lưu cài đặt</button>
+          </div>
+          <div class="field wide">
+            <label for="bomFolder">BOM folder</label>
+            <input id="bomFolder" placeholder="D:\10.Project\BOM" />
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="authModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2>Đăng nhập</h2>
+        <p>Mục này cần mật khẩu quản trị.</p>
+        <div class="field">
+          <label for="authUser">Tài khoản</label>
+          <input id="authUser" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="authPass">Mật khẩu</label>
+          <input id="authPass" type="password" autocomplete="current-password" />
+        </div>
+        <div id="authError" class="auth-error"></div>
+        <div class="modal-actions">
+          <button id="authCancelBtn" class="button ghost">Hủy</button>
+          <button id="authLoginBtn" class="button primary">Đăng nhập</button>
+        </div>
+      </div>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>
