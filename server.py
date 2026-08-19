@@ -592,6 +592,11 @@ def api_models(query, limit=80):
     return [dict(r) | {"score": round(s, 1)} for s, r in scored[:limit]]
 
 
+def visible_file_count(conn):
+    rows = conn.execute("SELECT model FROM files").fetchall()
+    return sum(1 for row in rows if normalize_text(row["model"]) not in HIDDEN_MODEL_NAMES)
+
+
 def api_search(payload):
     query = (payload.get("query") or "").strip()
     model_ids = payload.get("model_ids") or ([payload["model_id"]] if payload.get("model_id") else [])
@@ -688,7 +693,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(public_settings())
             if parsed.path == "/api/status":
                 with db() as conn:
-                    files = conn.execute("SELECT COUNT(*) c FROM files").fetchone()["c"]
+                    files = visible_file_count(conn)
                     rows = conn.execute("SELECT COUNT(*) c FROM rows").fetchone()["c"]
                 return self.send_json({"index": index_state, "files": files, "rows": rows})
             if parsed.path == "/api/models":

@@ -44,6 +44,10 @@ function isHiddenModel(file) {
   return HIDDEN_MODEL_NAMES.has(normalizeText(file.model));
 }
 
+function visibleFiles() {
+  return state.files.filter((file) => !isHiddenModel(file));
+}
+
 function phraseContains(container, phrase) {
   const hay = normalizedWords(container);
   const needle = normalizedWords(phrase);
@@ -332,8 +336,8 @@ async function boot() {
   state.files = data.files;
   state.rows = data.rows;
   state.terms = data.terminology;
-  $("modelCount").textContent = state.files.length;
-  $("dataModels").textContent = state.files.length;
+  $("modelCount").textContent = visibleFiles().length;
+  $("dataModels").textContent = visibleFiles().length;
   $("dataRows").textContent = state.rows.length;
   $("dataTerms").textContent = Object.keys(state.terms).length;
   renderTerms();
