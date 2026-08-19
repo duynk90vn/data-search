@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tra cứu BOM</title>
+    <link rel="stylesheet" href="assets/online-styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <h1>Tra cứu BOM</h1>
+          <p>Tìm model, tra linh kiện và so sánh BOM trực tiếp trên điện thoại.</p>
+        </div>
+        <div class="counter">
+          <strong id="modelCount">0</strong>
+          <span>MODEL</span>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Chức năng">
+        <button class="tab active" data-tab="search">Tra cứu</button>
+        <button class="tab" data-tab="compare">So sánh</button>
+        <button class="tab locked" data-tab="terms">Từ điển</button>
+        <button class="tab locked" data-tab="data">Dữ liệu</button>
+        <button class="tab locked" data-tab="settings">Cài đặt</button>
+      </nav>
+
+      <section id="search" class="panel active">
+        <div class="card">
+          <label for="modelInput">Model / BOM</label>
+          <div class="input-row">
+            <input id="modelInput" inputmode="search" placeholder="VD: BEL52, 162118, NC319" />
+            <button id="clearModel" class="button secondary">Xóa</button>
+          </div>
+          <div id="modelSuggestions" class="chips"></div>
+          <div id="selectedModel" class="selected">Chưa chọn BOM</div>
+        </div>
+
+        <div class="card">
+          <label for="partInput">Linh kiện</label>
+          <div class="input-row">
+            <input id="partInput" inputmode="search" placeholder="VD: tụ điện, dây nguồn, tem cảnh báo" />
+            <button id="searchBtn" class="button primary">Tìm</button>
+          </div>
+          <p id="termHint" class="hint"></p>
+        </div>
+
+        <div class="section-line">
+          <strong>Kết quả</strong>
+          <span id="resultCount">0/0</span>
+        </div>
+        <div id="results" class="table-wrap"></div>
+      </section>
+
+      <section id="compare" class="panel">
+        <div class="card">
+          <label for="compareModelInput">Chọn BOM so sánh</label>
+          <input id="compareModelInput" inputmode="search" placeholder="Tìm model rồi bấm để thêm A/B" />
+          <div id="compareSuggestions" class="chips"></div>
+          <div id="compareSelected" class="selected-list"></div>
+        </div>
+        <div class="card">
+          <label for="comparePartInput">Linh kiện</label>
+          <div class="input-row">
+            <input id="comparePartInput" inputmode="search" placeholder="VD: tụ điện, mô tơ, vòng đệm" />
+            <button id="compareBtn" class="button primary">So sánh</button>
+          </div>
+        </div>
+        <p id="compareCount" class="hint"></p>
+        <div id="compareResults"></div>
+      </section>
+
+      <section id="terms" class="panel protected">
+        <div class="card">
+          <h2>Từ điển</h2>
+          <p class="hint">Bản online dùng từ điển đã xuất theo source hiện tại.</p>
+          <div id="termsList" class="term-list"></div>
+        </div>
+      </section>
+
+      <section id="data" class="panel protected">
+        <div class="card metrics">
+          <div><span>Số model</span><strong id="dataModels">0</strong></div>
+          <div><span>Số dòng</span><strong id="dataRows">0</strong></div>
+          <div><span>Số từ điển</span><strong id="dataTerms">0</strong></div>
+        </div>
+      </section>
+
+      <section id="settings" class="panel protected">
+        <div class="card">
+          <h2>Cài đặt</h2>
+          <p class="hint">Bản online chạy bằng dữ liệu JSON đã xuất, không đọc trực tiếp folder BOM trên máy.</p>
+        </div>
+      </section>
+    </main>
+
+    <div id="loginModal" class="modal-backdrop" hidden>
+      <form class="modal" id="loginForm">
+        <h2>Đăng nhập</h2>
+        <p>Mục này cần mật khẩu quản trị.</p>
+        <label for="loginUser">Tài khoản</label>
+        <input id="loginUser" autocomplete="username" value="duynk90" />
+        <label for="loginPass">Mật khẩu</label>
+        <input id="loginPass" type="password" autocomplete="current-password" />
+        <div id="loginError" class="error"></div>
+        <div class="modal-actions">
+          <button type="button" id="loginCancel" class="button secondary">Hủy</button>
+          <button class="button primary">Đăng nhập</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="assets/online-app.js"></script>
+  </body>
+</html>

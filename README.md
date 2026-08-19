@@ -2,6 +2,14 @@
 
 Tool web chạy local trên Windows để index và tra cứu BOM Excel tiếng Trung/Việt.
 
+## Bản online
+
+Repo có thêm bản HTML tĩnh cho GitHub Pages:
+
+`https://duynk90vn.github.io/data-search/`
+
+Bản online đọc dữ liệu từ `public-data/bom-data.json`, gồm model, mã liệu, `品名`, `用量`, `規格` và từ điển. Bản này không đọc trực tiếp folder BOM trên máy và không mở được file Excel gốc.
+
 ## Chạy
 
 Mở file `start.bat`. Trình duyệt sẽ tự mở:
