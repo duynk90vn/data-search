@@ -360,8 +360,16 @@ def excel_files(folder):
     patterns = ["*.xlsx", "*.xlsm", "*.xltx", "*.xltm"]
     files = []
     for pattern in patterns:
-        files.extend(root.rglob(pattern))
-    return [p for p in files if not p.name.startswith("~$")]
+        files.extend(root.glob(pattern))
+    return [p for p in files if is_real_bom_file(p)]
+
+
+def is_real_bom_file(path):
+    if path.name.startswith("~$"):
+        return False
+    if normalize_text(path.stem) in HIDDEN_MODEL_NAMES:
+        return False
+    return path.is_file()
 
 
 def index_folder(force=False):
