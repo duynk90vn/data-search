@@ -28,6 +28,24 @@ function debounce(fn, wait = 180) {
   };
 }
 
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\s\-_./\\()（）[\]{}]+/g, "");
+}
+
+function customerModel(model) {
+  const match = String(model.name || "").match(/\(([^()]+)\)(?:\.[^.]+)?$/);
+  return match ? match[1].trim() : "";
+}
+
+function modelLabel(model) {
+  const customer = customerModel(model);
+  return customer && normalizeText(customer) !== normalizeText(model.model) ? `${model.model}(${customer})` : model.model;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -121,7 +139,7 @@ async function searchModels(input, target, onPick) {
     .map(
       (model) => `
       <button class="suggestion" data-id="${model.id}">
-        <strong>${escapeHtml(model.model)}</strong>
+        <strong>${escapeHtml(modelLabel(model))}</strong>
         <small>${escapeHtml(model.name)} · ${model.row_count} dòng</small>
       </button>`
     )
@@ -134,7 +152,7 @@ async function searchModels(input, target, onPick) {
 
 function pickModel(model) {
   state.selectedModel = model;
-  $("selectedModel").textContent = model.model;
+  $("selectedModel").textContent = modelLabel(model);
   $("selectedFile").textContent = model.name;
   $("modelSearch").value = "";
   $("modelResults").innerHTML = "";
@@ -149,7 +167,7 @@ function addCompareModel(model) {
 
 function renderCompareChips() {
   $("compareSelected").innerHTML = state.compareModels
-    .map((model) => `<span class="chip">${escapeHtml(model.model)} <button data-id="${model.id}" title="Remove">×</button></span>`)
+    .map((model) => `<span class="chip">${escapeHtml(modelLabel(model))} <button data-id="${model.id}" title="Remove">×</button></span>`)
     .join("");
   $("compareSelected").querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -207,7 +225,7 @@ function renderCompareTables(container, rows, terms = [], diffKeys = []) {
         <div class="compare-card-head">
           <span class="compare-badge">${label}</span>
           <div>
-            <strong>${escapeHtml(model.model)}</strong>
+            <strong>${escapeHtml(modelLabel(model))}</strong>
             <small>${escapeHtml(model.name)}</small>
           </div>
         </div>
@@ -254,7 +272,7 @@ async function runSearch() {
   });
   state.lastTerms = data.terms || [];
   $("termHint").textContent = data.terms?.length > 1 ? `Từ khóa liên quan: ${data.terms.join(", ")}` : "";
-  $("resultSummary").textContent = `${data.results.length} dòng liên quan trong ${state.selectedModel.model}`;
+  $("resultSummary").textContent = `${data.results.length} dòng liên quan trong ${modelLabel(state.selectedModel)}`;
   renderTable($("results"), data.results, data.terms || []);
 }
 

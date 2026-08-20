@@ -44,6 +44,16 @@ function isHiddenModel(file) {
   return HIDDEN_MODEL_NAMES.has(normalizeText(file.model));
 }
 
+function customerModel(file) {
+  const match = String(file.name || "").match(/\(([^()]+)\)(?:\.[^.]+)?$/);
+  return match ? match[1].trim() : "";
+}
+
+function modelLabel(file) {
+  const customer = customerModel(file);
+  return customer && normalizeText(customer) !== normalizeText(file.model) ? `${file.model}(${customer})` : file.model;
+}
+
 function visibleFiles() {
   return state.files.filter((file) => !isHiddenModel(file));
 }
@@ -196,7 +206,7 @@ function renderTable(container, rows, terms) {
 
 function renderModelChips(input, target, onPick) {
   const models = searchModels(input.value);
-  target.innerHTML = models.map((m) => `<button class="chip" data-id="${m.id}">${escapeHtml(m.model)}</button>`).join("");
+  target.innerHTML = models.map((m) => `<button class="chip" data-id="${m.id}">${escapeHtml(modelLabel(m))}</button>`).join("");
   target.querySelectorAll(".chip").forEach((button) => {
     button.addEventListener("click", () => onPick(models.find((m) => String(m.id) === button.dataset.id)));
   });
@@ -204,7 +214,7 @@ function renderModelChips(input, target, onPick) {
 
 function pickModel(model) {
   state.selectedModel = model;
-  $("selectedModel").textContent = `${model.model} - ${model.name}`;
+  $("selectedModel").textContent = `${modelLabel(model)} - ${model.name}`;
   $("modelInput").value = "";
   $("modelSuggestions").innerHTML = "";
 }
@@ -227,7 +237,7 @@ function renderCompareSelected() {
     state.compareModels
       .map(
         (model, index) =>
-          `<span class="selected-pill"><b>${labels[index]}</b>${escapeHtml(model.model)}<button data-id="${model.id}">×</button></span>`
+          `<span class="selected-pill"><b>${labels[index]}</b>${escapeHtml(modelLabel(model))}<button data-id="${model.id}">×</button></span>`
       )
       .join("") || "Chưa chọn BOM";
   $("compareSelected").querySelectorAll("button").forEach((button) => {
@@ -262,7 +272,7 @@ function runCompare() {
     .map((model, index) => {
       const rows = result.rows.filter((row) => row.file_id === model.id);
       return `<section class="compare-card">
-        <div class="compare-head"><span class="badge">${labels[index]}</span><span>${escapeHtml(model.model)}</span></div>
+        <div class="compare-head"><span class="badge">${labels[index]}</span><span>${escapeHtml(modelLabel(model))}</span></div>
         <div class="table-wrap" id="compareTable${index}"></div>
       </section>`;
     })
