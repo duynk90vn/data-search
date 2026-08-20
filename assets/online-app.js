@@ -49,9 +49,20 @@ function customerModel(file) {
   return match ? match[1].trim() : "";
 }
 
+function modelFromBomName(file) {
+  const base = String(file.name || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/\([^()]+\)$/, "")
+    .trim();
+  const withoutCategory = base.replace(/^[\u4e00-\u9fff]+[-_ ]*/, "").trim();
+  return withoutCategory || file.model;
+}
+
 function modelLabel(file) {
   const customer = customerModel(file);
-  return customer && normalizeText(customer) !== normalizeText(file.model) ? `${file.model}(${customer})` : file.model;
+  if (!customer) return file.model;
+  const model = normalizeText(customer) === normalizeText(file.model) ? modelFromBomName(file) : file.model;
+  return `${model}(${customer})`;
 }
 
 function visibleFiles() {

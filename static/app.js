@@ -41,9 +41,20 @@ function customerModel(model) {
   return match ? match[1].trim() : "";
 }
 
+function modelFromBomName(model) {
+  const base = String(model.name || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/\([^()]+\)$/, "")
+    .trim();
+  const withoutCategory = base.replace(/^[\u4e00-\u9fff]+[-_ ]*/, "").trim();
+  return withoutCategory || model.model;
+}
+
 function modelLabel(model) {
   const customer = customerModel(model);
-  return customer && normalizeText(customer) !== normalizeText(model.model) ? `${model.model}(${customer})` : model.model;
+  if (!customer) return model.model;
+  const productModel = normalizeText(customer) === normalizeText(model.model) ? modelFromBomName(model) : model.model;
+  return `${productModel}(${customer})`;
 }
 
 function escapeHtml(value) {
