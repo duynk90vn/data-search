@@ -21,6 +21,7 @@
 
       <nav class="tabs" aria-label="Chức năng">
         <button class="tab active" data-tab="search">Tra cứu</button>
+        <button class="tab" data-tab="summary">Tổng hợp</button>
         <button class="tab" data-tab="compare">So sánh</button>
         <button class="tab locked" data-tab="terms">Từ điển</button>
         <button class="tab locked" data-tab="data">Dữ liệu</button>
@@ -52,6 +53,41 @@
           <span id="resultCount">0/0</span>
         </div>
         <div id="results" class="table-wrap"></div>
+      </section>
+
+      <section id="summary" class="panel">
+        <div class="card">
+          <label for="summaryInput">Model khách hàng / Model</label>
+          <div class="input-row">
+            <input id="summaryInput" inputmode="search" placeholder="VD: BEL52, 162118, F753L" />
+            <button id="summaryClear" class="button secondary">Xóa</button>
+          </div>
+          <p id="summaryHint" class="hint"></p>
+          <div id="summarySuggestions" class="chips"></div>
+        </div>
+
+        <section class="summary-result" id="summaryResult" hidden>
+          <div class="summary-result-head">
+            <div>
+              <h2 id="summaryCustomer"></h2>
+              <p id="summaryModel"></p>
+            </div>
+            <div id="summaryStt" class="summary-stt"></div>
+          </div>
+          <div class="summary-details">
+            <div><span>Tụ điện</span><strong id="summaryCapacitor"></strong></div>
+            <div><span>Mô tơ</span><strong id="summaryMotor"></strong></div>
+            <div><span>Tem mô tơ</span><strong id="summaryMotorLabel"></strong></div>
+            <div><span>Dây nguồn</span><strong id="summaryPowerCord"></strong></div>
+            <div><span>Tem dây nguồn</span><strong id="summaryPowerCordLabel"></strong></div>
+          </div>
+        </section>
+
+        <div class="section-line">
+          <strong>Danh sách model</strong>
+          <span id="summaryCount">0/0</span>
+        </div>
+        <div id="summaryTable" class="table-wrap"></div>
       </section>
 
       <section id="compare" class="panel">

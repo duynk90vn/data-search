@@ -2,6 +2,7 @@ const state = {
   files: [],
   rows: [],
   terms: {},
+  summary: [],
   selectedModel: null,
   compareModels: [],
   authenticated: sessionStorage.getItem("online-bom-auth") === "true",
@@ -187,6 +188,14 @@ function highlight(value, terms) {
   return html;
 }
 
+function highlightText(value, query) {
+  const text = escapeHtml(value);
+  const needle = String(query || "").trim();
+  if (!needle) return text;
+  const safe = escapeHtml(needle).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(safe, "gi"), (match) => `<span class="match">${match}</span>`);
+}
+
 function renderTable(container, rows, terms) {
   if (!rows.length) {
     container.innerHTML = `<div class="card">Không tìm thấy dòng phù hợp.</div>`;
@@ -240,6 +249,94 @@ function runSearch() {
   $("termHint").textContent = result.terms.length > 1 ? `Từ khóa liên quan: ${result.terms.join(", ")}` : "";
   $("resultCount").textContent = `${result.rows.length}`;
   renderTable($("results"), result.rows, result.terms);
+}
+
+function searchSummary(query) {
+  const q = normalizeText(query);
+  if (!q) return state.summary;
+  return state.summary.filter((item) => normalizeText(`${item.customerModel} ${item.model}`).includes(q));
+}
+
+function renderSummarySuggestions(rows) {
+  $("summarySuggestions").innerHTML = rows
+    .slice(0, 10)
+    .map((item) => `<button class="chip" data-model="${escapeHtml(item.customerModel)}">${escapeHtml(item.customerModel)} - ${escapeHtml(item.model)}</button>`)
+    .join("");
+  $("summarySuggestions").querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      $("summaryInput").value = button.dataset.model;
+      runSummary();
+    });
+  });
+}
+
+function showSummary(item) {
+  $("summaryResult").hidden = !item;
+  if (!item) return;
+  $("summaryCustomer").textContent = item.customerModel || "";
+  $("summaryModel").textContent = item.model || "";
+  $("summaryStt").textContent = `STT ${item.stt || ""}`;
+  $("summaryCapacitor").textContent = item.capacitor || "";
+  $("summaryMotor").textContent = item.motor || "";
+  $("summaryMotorLabel").textContent = item.motorLabel || "";
+  $("summaryPowerCord").textContent = item.powerCord || "";
+  $("summaryPowerCordLabel").textContent = item.powerCordLabel || "";
+}
+
+function renderSummaryTable(rows, query) {
+  $("summaryCount").textContent = `${rows.length}/${state.summary.length}`;
+  if (!rows.length) {
+    $("summaryTable").innerHTML = `<div class="card">Không tìm thấy model phù hợp.</div>`;
+    return;
+  }
+  $("summaryTable").innerHTML = `
+    <table class="summary-table">
+      <thead><tr>
+        <th>STT</th>
+        <th>Model khách hàng</th>
+        <th>Model</th>
+        <th>Tụ điện</th>
+        <th>Mô tơ</th>
+        <th>Tem mô tơ</th>
+        <th>Dây nguồn</th>
+        <th>Tem dây nguồn</th>
+      </tr></thead>
+      <tbody>
+        ${rows
+          .map(
+            (item) => `<tr data-model="${escapeHtml(item.customerModel)}">
+              <td>${escapeHtml(item.stt)}</td>
+              <td><strong>${highlightText(item.customerModel, query)}</strong></td>
+              <td>${highlightText(item.model, query)}</td>
+              <td>${escapeHtml(item.capacitor)}</td>
+              <td>${escapeHtml(item.motor)}</td>
+              <td>${escapeHtml(item.motorLabel)}</td>
+              <td>${escapeHtml(item.powerCord)}</td>
+              <td>${escapeHtml(item.powerCordLabel)}</td>
+            </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+  $("summaryTable").querySelectorAll("tr[data-model]").forEach((row) => {
+    row.addEventListener("click", () => {
+      $("summaryInput").value = row.dataset.model;
+      runSummary();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+}
+
+function runSummary() {
+  const query = $("summaryInput").value.trim();
+  const rows = searchSummary(query);
+  const best = rows.find((item) => normalizeText(item.customerModel) === normalizeText(query)) || rows[0] || null;
+  renderSummarySuggestions(rows);
+  renderSummaryTable(rows, query);
+  showSummary(query ? best : null);
+  if (!query) $("summaryHint").textContent = "Danh sách đang hiển thị toàn bộ model.";
+  else if (!rows.length) $("summaryHint").textContent = `Không có kết quả cho "${query}".`;
+  else $("summaryHint").textContent = `${rows.length} kết quả phù hợp.`;
 }
 
 function renderCompareSelected() {
@@ -344,6 +441,20 @@ function bind() {
     if (event.key === "Enter") runSearch();
   });
   $("compareBtn").addEventListener("click", runCompare);
+  $("summaryInput").addEventListener("input", runSummary);
+  $("summaryInput").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    const rows = searchSummary($("summaryInput").value);
+    const best = rows.find((item) => normalizeText(item.customerModel) === normalizeText($("summaryInput").value)) || rows[0];
+    if (best) $("summaryInput").value = best.customerModel;
+    runSummary();
+    $("summaryInput").blur();
+  });
+  $("summaryClear").addEventListener("click", () => {
+    $("summaryInput").value = "";
+    $("summaryInput").focus();
+    runSummary();
+  });
   $("loginForm").addEventListener("submit", login);
   $("loginCancel").addEventListener("click", () => {
     $("loginModal").hidden = true;
@@ -354,6 +465,8 @@ async function boot() {
   bind();
   const response = await fetch("public-data/bom-data.json");
   const data = await response.json();
+  const summaryResponse = await fetch("public-data/model-summary.json");
+  state.summary = await summaryResponse.json();
   state.files = data.files;
   state.rows = data.rows;
   state.terms = data.terminology;
@@ -362,6 +475,7 @@ async function boot() {
   $("dataRows").textContent = state.rows.length;
   $("dataTerms").textContent = Object.keys(state.terms).length;
   renderTerms();
+  runSummary();
 }
 
 boot().catch((error) => {
