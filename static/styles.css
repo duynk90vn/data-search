@@ -18,7 +18,7 @@
 body {
   margin: 0;
   color: var(--ink);
-  font-family: "Segoe UI", "Noto Sans", system-ui, sans-serif;
+  font-family: "Times New Roman", Times, serif;
   background:
     linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px),
     linear-gradient(rgba(15, 118, 110, 0.05) 1px, transparent 1px),
