@@ -37,6 +37,14 @@ def model_from_filename(path):
     return re.sub(r"\([^()]+\)$", "", path.stem).strip()
 
 
+def bom_file_rows():
+    files = sorted((p for p in BOM_ROOT.glob("*") if p.is_file() and is_real_bom_file(p)), key=lambda p: p.name.lower())
+    rows = []
+    for path in files:
+        rows.append({"path": path, "model": model_from_filename(path), "customerModel": customer_from_filename(path)})
+    return rows
+
+
 def find_summary_workbook():
     candidates = []
     summary_dir = BOM_ROOT / "Kết quả"
@@ -97,13 +105,30 @@ def lookup_key(row):
     return normalize(row.get("customerModel")) or normalize(row.get("model"))
 
 
+def filename_customer(row, bom_rows):
+    model_key = normalize(row.get("model"))
+    model_without_customer = normalize(re.sub(r"\([^()]+\)$", "", str(row.get("model") or "")).strip())
+    customer_key = normalize(row.get("customerModel"))
+    for bom in bom_rows:
+        if model_key and model_key == normalize(bom["model"]):
+            return bom["customerModel"]
+        if model_without_customer and model_without_customer == normalize(bom["model"]):
+            return bom["customerModel"]
+    for bom in bom_rows:
+        if customer_key and customer_key == normalize(bom["customerModel"]):
+            return bom["customerModel"]
+    return row.get("customerModel", "")
+
+
 def merge_rows(summary_rows, fallback_rows):
+    bom_rows = bom_file_rows()
     by_key = {}
     for row in fallback_rows:
         key = lookup_key(row)
         if key:
             by_key[key] = row
     for row in summary_rows:
+        row["customerModel"] = filename_customer(row, bom_rows)
         key = lookup_key(row)
         if key:
             by_key[key] = {**by_key.get(key, {}), **row}
@@ -116,9 +141,8 @@ def merge_rows(summary_rows, fallback_rows):
             result.append({**by_key[key]})
             emitted.add(key)
 
-    bom_files = sorted((p for p in BOM_ROOT.glob("*") if p.is_file() and is_real_bom_file(p)), key=lambda p: p.name.lower())
-    for path in bom_files:
-        base = {"model": model_from_filename(path), "customerModel": customer_from_filename(path)}
+    for bom in bom_rows:
+        base = {"model": bom["model"], "customerModel": bom["customerModel"]}
         key = lookup_key(base)
         if key in emitted:
             continue
