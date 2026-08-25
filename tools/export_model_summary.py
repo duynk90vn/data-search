@@ -148,6 +148,11 @@ def row_text(row):
     return " ".join(str(row.get(key) or "") for key in ("name_cn", "quantity", "specification", "search_text"))
 
 
+def has_light_wire_label(row):
+    text = row_text(row)
+    return "燈線標" in text or "灯线标" in text
+
+
 def load_index_rows(customer_model):
     if not DB_PATH.exists():
         return []
@@ -186,6 +191,8 @@ def derive_row_fields(row, motor_lookup):
             label_count = len(re.findall(r"標|标", item.get("specification") or ""))
             if label_count:
                 derived["powerCordLabel"] = f"{label_count} tem"
+    if not derived.get("powerCordLabel") and any(has_light_wire_label(item) for item in rows):
+        derived["powerCordLabel"] = "1 tem"
     label = derived.get("motorLabel") or row.get("motorLabel")
     if label and not derived.get("motor"):
         derived["motor"] = motor_lookup.get(label, "")
