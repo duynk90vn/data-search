@@ -1,5 +1,6 @@
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 ROOT = Path(__file__).resolve().parents[1]
 BOM_ROOT = Path(r"D:\10.Project\BOM")
 OUT_PATH = ROOT / "public-data" / "model-summary.json"
+DB_PATH = ROOT / "data" / "bom_index.sqlite3"
 EXCEL_EXTENSIONS = {".xlsx", ".xlsm", ".xltx", ".xltm"}
 SKIP_PREFIXES = ("~$",)
 SKIP_STEMS = {"tonghopbom", "tonghopbomcapnhat"}
@@ -105,6 +107,91 @@ def lookup_key(row):
     return normalize(row.get("customerModel")) or normalize(row.get("model"))
 
 
+def format_capacitor(text):
+    cap = re.search(r"(\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)?)\s*U?F\s*[-/]?\s*(\d{3})\s*V", text, re.I)
+    if not cap:
+        return ""
+    extra = ""
+    tail = text[cap.end() : cap.end() + 30]
+    plus = re.search(r"\+(\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)?)", tail)
+    grade = re.search(r"([A-Z]{1,3}|[IVX]{1,4})\s*級", tail, re.I)
+    if plus:
+        extra += f" {plus.group(1)}"
+    if grade:
+        extra += f" cấp {grade.group(1).upper()}"
+    return f"{cap.group(1)} µF {cap.group(2)}V{extra}"
+
+
+def clean_motor_label(text):
+    match = re.search(r"(?i)impedance\s*-?\s*protected\s*[-'\" ]*\s*([A-Z]{1,3})\s*[-'\" ]*\s*([0-9A-Z]+(?:[-'\"]\d+)*)?", text)
+    if not match:
+        return ""
+    suffix = match.group(1).upper()
+    if match.group(2):
+        extra = match.group(2).replace("'", "").replace('"', "")
+        if extra.upper() != "UL" and not extra.upper().startswith("UL-"):
+            suffix += f"-{extra}"
+    return f"ImpedanceProtected-{suffix}"
+
+
+def build_motor_lookup(rows):
+    lookup = {}
+    for row in rows:
+        label = row.get("motorLabel") or ""
+        motor = row.get("motor") or ""
+        if label and motor:
+            lookup.setdefault(label, motor)
+    return lookup
+
+
+def row_text(row):
+    return " ".join(str(row.get(key) or "") for key in ("name_cn", "quantity", "specification", "search_text"))
+
+
+def load_index_rows(customer_model):
+    if not DB_PATH.exists():
+        return []
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        file_row = conn.execute("SELECT id FROM files WHERE name LIKE ? ORDER BY indexed_at DESC", (f"%({customer_model}).%",)).fetchone()
+        if not file_row:
+            return []
+        return [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT row_number,bom_level,part_no,name_cn,quantity,specification,search_text
+                FROM rows
+                WHERE file_id=?
+                ORDER BY row_number
+                """,
+                (file_row["id"],),
+            )
+        ]
+
+
+def derive_row_fields(row, motor_lookup):
+    rows = load_index_rows(row.get("customerModel", ""))
+    derived = {}
+    for item in rows:
+        text = row_text(item)
+        if not derived.get("capacitor") and ("電容" in text or "电容" in text):
+            derived["capacitor"] = format_capacitor(text)
+        if not derived.get("motorLabel"):
+            derived["motorLabel"] = clean_motor_label(text)
+        if not derived.get("powerCord") and ("電源線組" in text or "电源线组" in text):
+            match = re.search(r"(101[05])\s*#?\s*18.*?(\d{2,3})\s*cm", text, re.I | re.S)
+            if match:
+                derived["powerCord"] = f"{match.group(1)}#18 - {match.group(2)}cm"
+            label_count = len(re.findall(r"標|标", item.get("specification") or ""))
+            if label_count:
+                derived["powerCordLabel"] = f"{label_count} tem"
+    label = derived.get("motorLabel") or row.get("motorLabel")
+    if label and not derived.get("motor"):
+        derived["motor"] = motor_lookup.get(label, "")
+    return {key: value for key, value in derived.items() if value}
+
+
 def filename_customer(row, bom_rows):
     model_key = normalize(row.get("model"))
     model_without_customer = normalize(re.sub(r"\([^()]+\)$", "", str(row.get("model") or "")).strip())
@@ -122,6 +209,7 @@ def filename_customer(row, bom_rows):
 
 def merge_rows(summary_rows, fallback_rows):
     bom_rows = bom_file_rows()
+    motor_lookup = build_motor_lookup([*fallback_rows, *summary_rows])
     by_key = {}
     for row in fallback_rows:
         key = lookup_key(row)
@@ -142,7 +230,7 @@ def merge_rows(summary_rows, fallback_rows):
             emitted.add(key)
 
     for bom in bom_rows:
-        base = {"model": bom["model"], "customerModel": bom["customerModel"]}
+        base = {"model": bom["model"], "customerModel": bom["customerModel"], "_fromBomOnly": True}
         key = lookup_key(base)
         if key in emitted:
             continue
@@ -153,6 +241,12 @@ def merge_rows(summary_rows, fallback_rows):
         row["stt"] = index
         for field in ("model", "customerModel", "capacitor", "motor", "motorLabel", "powerCord", "powerCordLabel"):
             row.setdefault(field, "")
+        if row.get("_fromBomOnly") or any(not row.get(field) for field in ("capacitor", "motor", "motorLabel", "powerCord", "powerCordLabel")):
+            derived = derive_row_fields(row, motor_lookup)
+            for field, value in derived.items():
+                if row.get("_fromBomOnly") or not row.get(field):
+                    row[field] = value
+        row.pop("_fromBomOnly", None)
     return result
 
 
