@@ -110,12 +110,12 @@ def filename_customer(row, bom_rows):
     model_without_customer = normalize(re.sub(r"\([^()]+\)$", "", str(row.get("model") or "")).strip())
     customer_key = normalize(row.get("customerModel"))
     for bom in bom_rows:
+        if customer_key and customer_key == normalize(bom["customerModel"]):
+            return bom["customerModel"]
+    for bom in bom_rows:
         if model_key and model_key == normalize(bom["model"]):
             return bom["customerModel"]
         if model_without_customer and model_without_customer == normalize(bom["model"]):
-            return bom["customerModel"]
-    for bom in bom_rows:
-        if customer_key and customer_key == normalize(bom["customerModel"]):
             return bom["customerModel"]
     return row.get("customerModel", "")
 
