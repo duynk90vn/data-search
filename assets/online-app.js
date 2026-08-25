@@ -12,6 +12,7 @@ const state = {
 const ADMIN_USER = "duynk90";
 const ADMIN_PASSWORD_HASH = "7e77334c65db47e4bacd8e2f6b3c0051c3963ed8b0bbf9982e310cb32baf2d32";
 const HIDDEN_MODEL_NAMES = new Set(["tonghopbom", "tonghopbomcapnhat"]);
+const DATA_VERSION = "20260825-s112-summary";
 const $ = (id) => document.getElementById(id);
 
 function escapeHtml(value) {
@@ -463,9 +464,9 @@ function bind() {
 
 async function boot() {
   bind();
-  const response = await fetch("public-data/bom-data.json");
+  const response = await fetch(`public-data/bom-data.json?v=${DATA_VERSION}`, { cache: "no-store" });
   const data = await response.json();
-  const summaryResponse = await fetch("public-data/model-summary.json");
+  const summaryResponse = await fetch(`public-data/model-summary.json?v=${DATA_VERSION}`, { cache: "no-store" });
   state.summary = await summaryResponse.json();
   state.files = data.files;
   state.rows = data.rows;
