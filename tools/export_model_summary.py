@@ -108,13 +108,16 @@ def lookup_key(row):
 
 
 def format_capacitor(text):
-    cap = re.search(r"(\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)?)\s*U?F\s*[-/]?\s*(\d{3})\s*V", text, re.I)
+    text = re.sub(r"\s+", "", text)
+    cap = re.search(r"(\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)*)\s*(?:(?:[uµμ]?F)[-/]?|[-/])\s*(?:\([^()]*\)-)?(?:[A-Z]+級-)?(\d{3})\s*V", text, re.I)
     if not cap:
         return ""
     extra = ""
     tail = text[cap.end() : cap.end() + 30]
     plus = re.search(r"\+(\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)?)", tail)
-    grade = re.search(r"([A-Z]{1,3}|[IVX]{1,4})\s*級", tail, re.I)
+    grade = re.search(r"([A-Z]{1,3}|[IVX]{1,4})\s*級", text, re.I)
+    if not grade:
+        grade = re.search(r"-([A-Z]{1,3})(?=-|$)", tail)
     if plus:
         extra += f" {plus.group(1)}"
     if grade:
@@ -123,7 +126,7 @@ def format_capacitor(text):
 
 
 def clean_motor_label(text):
-    match = re.search(r"(?i)impedance\s*-?\s*protected\s*[-'\" ]*\s*([A-Z]{1,3})\s*[-'\" ]*\s*([0-9A-Z]+(?:[-'\"]\d+)*)?", text)
+    match = re.search(r"(?i)impedance\s*-?\s*protected\s*[-'\" ]*\s*([A-Z]{1,3}\d*)\s*[-'\" ]*\s*([0-9A-Z]+(?:[-'\"]\d+)*)?", text)
     if not match:
         return ""
     suffix = match.group(1).upper()
@@ -178,24 +181,47 @@ def load_index_rows(customer_model):
 def derive_row_fields(row, motor_lookup):
     rows = load_index_rows(row.get("customerModel", ""))
     derived = {}
+    # A dedicated capacitor or reversing module takes precedence over receiver capacitors.
+    for names in (("電容器", "电容器"), ("正反轉模組", "正反转模组"), ("接收器",)):
+        candidates = {
+            value
+            for item in rows
+            if any(name in item["name_cn"].replace("\n", "") for name in names)
+            if (value := format_capacitor(item.get("specification") or ""))
+        }
+        if candidates:
+            if len(candidates) == 1:
+                derived["capacitor"] = candidates.pop()
+            break
+    dimensions = set()
     for item in rows:
-        text = row_text(item)
-        if not derived.get("capacitor") and ("電容" in text or "电容" in text):
-            derived["capacitor"] = format_capacitor(text)
+        name = re.sub(r"\s+", "", item["name_cn"])
+        if "粗胚" in name:
+            match = re.search(r"(\d{3})[xX×*](\d{3})[xX×*](\d+(?:\.\d+)?)(?![\d.])", name)
+            if match:
+                dimensions.add("*".join(match.groups()))
+    if len(dimensions) == 1:
+        derived["motor"] = dimensions.pop()
+    for item in rows:
+        text = item["name_cn"] + " " + (item.get("specification") or "")
         if not derived.get("motorLabel"):
             derived["motorLabel"] = clean_motor_label(text)
         if not derived.get("powerCord") and ("電源線組" in text or "电源线组" in text):
             match = re.search(r"(101[05])\s*#?\s*18.*?(\d{2,3})\s*cm", text, re.I | re.S)
             if match:
                 derived["powerCord"] = f"{match.group(1)}#18 - {match.group(2)}cm"
-            label_count = len(re.findall(r"標|标", item.get("specification") or ""))
+            spec = re.sub(r"\s+", "", item.get("specification") or "")
+            label_count = len(set(re.findall(r"MOTOR|NEUTRAL|LIGHT", spec, re.I)))
+            if not label_count:
+                label_count = len(re.findall(r"標|标", spec))
             if label_count:
                 derived["powerCordLabel"] = f"{label_count} tem"
+                if "英西法文" in spec:
+                    derived["powerCordLabel"] += " , 3 ngôn ngữ"
+                elif "英西文" in spec:
+                    derived["powerCordLabel"] += " , 2 ngôn ngữ"
     if not derived.get("powerCordLabel") and any(has_light_wire_label(item) for item in rows):
         derived["powerCordLabel"] = "1 tem"
-    label = derived.get("motorLabel") or row.get("motorLabel")
-    if label and not derived.get("motor"):
-        derived["motor"] = motor_lookup.get(label, "")
     return {key: value for key, value in derived.items() if value}
 
 
@@ -216,6 +242,7 @@ def filename_customer(row, bom_rows):
 
 def merge_rows(summary_rows, fallback_rows):
     bom_rows = bom_file_rows()
+    valid_keys = {lookup_key(bom) for bom in bom_rows}
     motor_lookup = build_motor_lookup([*fallback_rows, *summary_rows])
     by_key = {}
     for row in fallback_rows:
@@ -232,7 +259,7 @@ def merge_rows(summary_rows, fallback_rows):
     result = []
     for row in summary_rows:
         key = lookup_key(row)
-        if key and key not in emitted:
+        if key in valid_keys and key not in emitted:
             result.append({**by_key[key]})
             emitted.add(key)
 
@@ -248,11 +275,13 @@ def merge_rows(summary_rows, fallback_rows):
         row["stt"] = index
         for field in ("model", "customerModel", "capacitor", "motor", "motorLabel", "powerCord", "powerCordLabel"):
             row.setdefault(field, "")
-        if row.get("_fromBomOnly") or any(not row.get(field) for field in ("capacitor", "motor", "motorLabel", "powerCord", "powerCordLabel")):
-            derived = derive_row_fields(row, motor_lookup)
-            for field, value in derived.items():
-                if row.get("_fromBomOnly") or not row.get(field):
-                    row[field] = value
+        derived = derive_row_fields(row, motor_lookup)
+        for field, value in derived.items():
+            previous = row.get(field, "")
+            # Keep confirmed language details when the current BOM has the same label count.
+            if field == "powerCordLabel" and previous.startswith(value + " "):
+                continue
+            row[field] = value
         row.pop("_fromBomOnly", None)
     return result
 
