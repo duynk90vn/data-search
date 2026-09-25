@@ -220,6 +220,27 @@ def derive_row_fields(row, motor_lookup):
                     derived["powerCordLabel"] += " , 3 ngôn ngữ"
                 elif "英西文" in spec:
                     derived["powerCordLabel"] += " , 2 ngôn ngữ"
+    if not derived.get("powerCordLabel") and not row.get("powerCordLabel"):
+        labels = {}
+        for item in rows:
+            if not any(word in item["name_cn"] for word in ("標", "标")):
+                continue
+            spec = re.sub(r"\s+", "", item.get("specification") or "")
+            if not re.search(r"(?:^|-)\b(?:MOTOR|NEUTRAL|LIGHT)\b(?:-|$)", spec, re.I):
+                continue
+            try:
+                quantity = float(item.get("quantity") or "")
+            except ValueError:
+                continue
+            if quantity > 0 and quantity.is_integer():
+                labels[(item.get("part_no", ""), spec)] = int(quantity)
+        if labels:
+            derived["powerCordLabel"] = f"{sum(labels.values())} tem"
+            specs = [key[1] for key in labels]
+            if all("英西法文" in spec for spec in specs):
+                derived["powerCordLabel"] += " , 3 ngôn ngữ"
+            elif all("英西文" in spec for spec in specs):
+                derived["powerCordLabel"] += " , 2 ngôn ngữ"
     if not derived.get("powerCordLabel") and any(has_light_wire_label(item) for item in rows):
         derived["powerCordLabel"] = "1 tem"
     return {key: value for key, value in derived.items() if value}

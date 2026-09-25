@@ -55,6 +55,23 @@ class SummaryRefreshTests(unittest.TestCase):
         with patch.object(summary, "load_index_rows", return_value=rows):
             self.assertEqual(summary.derive_row_fields({}, {})["powerCordLabel"], "2 tem , 3 ngôn ngữ")
 
+    def test_standalone_wire_labels_without_power_cord_assembly(self):
+        rows = [part("零件-其他類標", "4x2CM-MOTOR-英西法文-黑底白字"),
+                part("零件-其他類標", "4x2CM-NEUTRAL-英西法文-白底黑字"),
+                part("零件-其他類標", "4.2x1.1CM-AMP-9P-#1色標"),
+                part("粗胚-電線", "1010#18-36cm-12mm半-摩氏公端-黑"),
+                part("粗胚-電線", "1010#18-45cm-10mm半-AMP公端-黑")]
+        with patch.object(summary, "load_index_rows", return_value=rows):
+            derived = summary.derive_row_fields({"customerModel": "TMPH52"}, {})
+        self.assertEqual(derived["powerCordLabel"], "2 tem , 3 ngôn ngữ")
+        self.assertNotIn("powerCord", derived)
+
+    def test_assembly_label_count_takes_precedence(self):
+        rows = [part("電源線組", "1010#18-235cm-MOTOR-NEUTRAL-LIGHT-英西法文"),
+                part("零件-其他類標", "4x2CM-MOTOR-英西法文")]
+        with patch.object(summary, "load_index_rows", return_value=rows):
+            self.assertEqual(summary.derive_row_fields({}, {})["powerCordLabel"], "3 tem , 3 ngôn ngữ")
+
     def test_removed_bom_does_not_return_from_old_summary(self):
         with patch.object(summary, "bom_file_rows", return_value=[]):
             self.assertEqual(summary.merge_rows([{"customerModel": "OLD", "model": "old"}], []), [])
