@@ -66,6 +66,15 @@ class SummaryRefreshTests(unittest.TestCase):
         self.assertEqual(derived["powerCordLabel"], "2 tem , 3 ngôn ngữ")
         self.assertNotIn("powerCord", derived)
 
+    def test_confirmed_tmph52_wires_use_current_bom_length(self):
+        for length in (36, 38):
+            rows = [dict(part("粗胚-電線", f"1010#18-{length}cm-12mm半-摩氏公端-黑"), part_no="65700011990000"),
+                    dict(part("粗胚-電線", f"1010#18-{length}cm-12mm半-摩氏母端-白"), part_no="65700002100000"),
+                    dict(part("粗胚-電線", "1010#18-45cm-10mm半-AMP公端-黑"), part_no="65700012800000")]
+            with patch.object(summary, "load_index_rows", return_value=rows):
+                result = summary.derive_row_fields({"customerModel": "TMPH52"}, {})
+            self.assertEqual(result["powerCord"], f"1010#18 - {length}cm")
+
     def test_assembly_label_count_takes_precedence(self):
         rows = [part("電源線組", "1010#18-235cm-MOTOR-NEUTRAL-LIGHT-英西法文"),
                 part("零件-其他類標", "4x2CM-MOTOR-英西法文")]

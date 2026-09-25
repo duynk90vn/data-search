@@ -12,7 +12,7 @@ const state = {
 const ADMIN_USER = "duynk90";
 const ADMIN_PASSWORD_HASH = "7e77334c65db47e4bacd8e2f6b3c0051c3963ed8b0bbf9982e310cb32baf2d32";
 const HIDDEN_MODEL_NAMES = new Set(["tonghopbom", "tonghopbomcapnhat"]);
-const DATA_VERSION = "20260925-tmph52-labels";
+const DATA_VERSION = "20260925-tmph52-cord";
 const $ = (id) => document.getElementById(id);
 
 function escapeHtml(value) {

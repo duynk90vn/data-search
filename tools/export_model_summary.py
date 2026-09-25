@@ -220,6 +220,18 @@ def derive_row_fields(row, motor_lookup):
                     derived["powerCordLabel"] += " , 3 ngôn ngữ"
                 elif "英西文" in spec:
                     derived["powerCordLabel"] += " , 2 ngôn ngữ"
+    if not derived.get("powerCord"):
+        confirmed_path = ROOT / "config" / "confirmed_power_cords.json"
+        confirmed = json.loads(confirmed_path.read_text(encoding="utf-8")) if confirmed_path.exists() else {}
+        codes = set(confirmed.get(row.get("customerModel", ""), []))
+        selected = [item for item in rows if item.get("part_no") in codes]
+        # User-confirmed wire identities; read length from the current BOM each time.
+        if codes and {item["part_no"] for item in selected} == codes:
+            matches = [re.search(r"(101[05])\s*#?\s*18\s*-\s*(\d+)\s*cm", item.get("specification") or "", re.I) for item in selected]
+            if all(matches):
+                values = {f"{match.group(1)}#18 - {match.group(2)}cm" for match in matches}
+                if len(values) == 1:
+                    derived["powerCord"] = values.pop()
     if not derived.get("powerCordLabel") and not row.get("powerCordLabel"):
         labels = {}
         for item in rows:
